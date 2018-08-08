@@ -8,7 +8,7 @@ class UniqueDict(dict):
 		if key not in self:
 			dict.__setitem__(self, key, item)
 		else:
-			raise KeyError("Key already exists")
+			raise KeyError("Key already exists " + key)
 
 
 def from_url_to_name(url):
@@ -22,7 +22,7 @@ def from_url_to_name(url):
 
 def list_to_dict(data):
 	# конвертирует из листа в дикт
-	products=dict()
+	products=UniqueDict()
 	for i in range(len(data)):
 		if len(data[i])>3:
 			products[data[i][0]] = (data[i][1], data[i][2], data[i][3])
@@ -118,9 +118,12 @@ def load_page_to_db(html):
 	fileWrite = open('brandshop.csv', "a", newline="", encoding='utf8')
 	writer = csv.writer(fileWrite)
 	soup = bs4.BeautifulSoup(html, "html.parser")
+	product_name = soup.find("h2").text
 	price_box = soup.find('div', class_="price price-box")
+	if not price_box:
+		writer.writerow([product_name, False, 0])
+		return
 	price = price_box.text.strip()
-	product_name = soup.find("a", class_="product-image")['title']
 	if price_box['data-sale']=='sale:true':
 		prices = price.split("\n")
 		price_after = str_to_int(prices[0])
@@ -141,3 +144,13 @@ def get_all_brands_links():
 		link = b.find('a')
 		links.append(link.attrs['href'])
 	return links
+
+
+def dump_data_to_db(data):
+	with open('brandshop.csv', 'w', newline='', encoding='utf8') as outfile:
+		w = csv.writer(outfile)
+		for k,v in data.items():
+			if is_on_sale(v):
+				w.writerow([k, v[0], v[1], v[2]])
+			else:
+				w.writerow([k, v[0], v[1]])
