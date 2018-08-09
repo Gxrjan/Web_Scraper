@@ -22,7 +22,7 @@ def from_url_to_name(url):
 
 def list_to_dict(data):
 	# конвертирует из листа в дикт
-	products=UniqueDict()
+	products=dict()
 	for i in range(len(data)):
 		if len(data[i])>3:
 			products[data[i][0]] = (data[i][1], data[i][2], data[i][3])
