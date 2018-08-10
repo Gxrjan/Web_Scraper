@@ -21,12 +21,12 @@ def display_name_price_container_two(html):
 	price = price_box.text.strip()
 	print(product_name)
 	if price_box['data-sale']=='sale:true':
-		sale = True
+		sale = 'True'
 		prices = price.split("\n")
 		price_after = str_to_int(prices[0])
 		price_before = str_to_int(prices[1])
 		if product_name not in DATA.keys():
-			DATA[product_name] = (True, price_before, price_after)
+			DATA[product_name] = (sale, price_before, price_after)
 			print(product_name + ' добавлен(а) в список')
 			NEWS.append('%s был добавлен в список. Цена %s' % (product_name, price_after))
 		else:
@@ -55,7 +55,7 @@ def display_name_price_container_two(html):
 				else:
 					print('Цена осталась прежняя')
 	else:
-		sale = False
+		sale = 'False'
 		price = str_to_int(price)
 		if product_name not in DATA.keys():
 			DATA[product_name] = (sale, price)
