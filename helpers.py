@@ -1,6 +1,9 @@
 import requests, bs4, sys, webbrowser, csv, time, os
 from datetime import datetime
+from classes import *
 
+
+CREATION_DATA = list()
 
 class UniqueDict(dict):
 	# dict без повторений в keys
@@ -29,6 +32,23 @@ def list_to_dict(data):
 		else:
 			products[data[i][0]]=(data[i][1], data[i][2])
 	return products
+
+
+def str_to_bool(str):
+	return str == 'True'
+
+
+
+def get_data_from_db():
+	if db_exists():
+		fileRead = open('brandshop.csv', newline='', encoding='utf8')
+		reader = csv.reader(fileRead)
+		db = list(reader)
+		product_list = list()
+		for d in db:
+			product = Product(int(d[0]), d[1], str_to_bool(d[2]), int(d[3]), int(d[4]))
+			product_list.append(product)
+		return product_list
 
 
 def is_on_sale(prd):
@@ -100,38 +120,52 @@ def display_news(news):
 			writer.writerow([str(datetime.now()), news[s]])
 
 
-def create_and_load_db(href):
+def create_db():
+	links = get_all_brands_links()
+	for link in links:
+			get_page_data(link)
+	file = open('brandshop.csv', 'w', newline='', encoding='utf8')
+	writer = csv.writer(file)
+	for p in CREATION_DATA:
+		writer.writerow([p.product_id, p.product_name, p.is_on_sale, p.current_price, p.regular_price])
+
+
+
+def get_page_data(href):
 	res = requests.get(href)
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, "html.parser")
 	product_containers = soup.select('.product-container')
 	for l in range(len(product_containers)):
-		load_page_to_db(str(product_containers[l]))
+		get_product_data(str(product_containers[l]))
 	if has_further_page(soup):
 		href=soup.find("a", text="Далее").attrs['href']
-		create_and_load_db(href)
+		get_page_data(href)
 	else:
 		return
 
 
-def load_page_to_db(html):
-	fileWrite = open('brandshop.csv', "a", newline="", encoding='utf8')
-	writer = csv.writer(fileWrite)
+def get_product_data(html):
 	soup = bs4.BeautifulSoup(html, "html.parser")
 	product_name = soup.find("h2").text
+	product_id = soup.find('div', class_='product').attrs['data-product-id']
 	price_box = soup.find('div', class_="price price-box")
 	if not price_box:
-		writer.writerow([product_name, False, 0])
-		return
-	price = price_box.text.strip()
-	if price_box['data-sale']=='sale:true':
-		prices = price.split("\n")
-		price_after = str_to_int(prices[0])
-		price_before = str_to_int(prices[1])
-		writer.writerow([product_name, True, price_before, price_after])
+		product = Product(product_id, product_name, False, 0, 0)
 	else:
-		price = str_to_int(price)
-		writer.writerow([product_name, False, price])
+		price = price_box.text.strip()
+		if price_box['data-sale']=='sale:true':
+			prices = price.split("\n")
+			current_price = str_to_int(prices[0])
+			regular_price = str_to_int(prices[1])
+			product = Product(product_id, product_name, True, current_price, regular_price)
+		else:
+			price = str_to_int(price)
+			product = Product(product_id, product_name, False, price, price)
+	if product not in CREATION_DATA:
+		CREATION_DATA.append(product)
+
+
 
 
 def get_all_brands_links():

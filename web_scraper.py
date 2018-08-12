@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 import requests, bs4, sys, webbrowser, csv, time
 from helpers import *
+from classes import *
 
 NEWS = list()
 if db_exists():
-	fileRead = open('brandshop.csv', newline='', encoding='utf8')
-	reader = csv.reader(fileRead)
-	DATA = list(reader)
-	DATA = list_to_dict(DATA)
+	DATA = get_data_from_db()
 
 def display_name_price_container_two(html):
 	# отражает название и цену продуктов контейнера
@@ -90,7 +88,6 @@ def display_name_price_container_two(html):
 
 
 
-
 def display_products(href):
 	res = requests.get(href)
 	res.raise_for_status()
@@ -112,6 +109,58 @@ def display_products(href):
 		print("Конец бренда")
 
 
+def scan_for_changes():
+	links = get_all_brands_links()
+	for link in links:
+			get_page_data(link)
+
+
+def scan_for_changes_page(href):
+	res = requests.get(href)
+	res.raise_for_status()
+	soup = bs4.BeautifulSoup(res.text, "html.parser")
+	product_containers = soup.select('.product-container')
+	for l in range(len(product_containers)):
+		scan_for_changes_product(str(product_containers[l]))
+	if has_further_page(soup):
+		href=soup.find("a", text="Далее").attrs['href']
+		scan_for_changes_page(href)
+	else:
+		return
+
+
+def scan_for_changes_product(html):
+	soup = bs4.BeautifulSoup(html, "html.parser")
+	product_name = soup.find("h2").text
+	product_id = soup.find('div', class_='product').attrs['data-product-id']
+	price_box = soup.find('div', class_="price price-box")
+	if not price_box:
+		product_from_page = Product(product_id, product_name, False, 0, 0)
+	else:
+		price = price_box.text.strip()
+		if price_box['data-sale']=='sale:true':
+			prices = price.split("\n")
+			current_price = str_to_int(prices[0])
+			regular_price = str_to_int(prices[1])
+			product_from_page = Product(product_id, product_name, True, current_price, regular_price)
+		else:
+			price = str_to_int(price)
+			product_from_page = Product(product_id, product_name, False, price, price)
+	if product_from_page not in DATA:
+		DATA.append(product_from_page)
+		product_news = 'Продукт %s был добавлен в базу данных. Цена: %s' % (product, product.current_price)
+	else:
+		product_from_db = DATA[DATA.index(product_from_page)]
+		if not product_from_page.is_on_sale and not product_from_db.is_on_sale:
+			print('Сейл не начался')
+		elif product_from_page.is_on_sale and product_from_db.is_on_sale:
+			print('Сейл не закончился')
+		elif product_from_page.is_on_sale and not product_from_db.is_on_sale:
+			print('Сейл начался!')
+		else:
+			print('Сейл закончился!')
+		
+
 def main():
 	links = get_all_brands_links()
 	if db_exists():
@@ -123,8 +172,7 @@ def main():
 		print('Создаю базу данных.', end='')
 		time.sleep(0.5)
 		print('.', end='')
-		for link in links:
-			create_and_load_db(link)
+		create_db()
 		time.sleep(0.5)
 		print('.', end='')
 		time.sleep(0.5)
