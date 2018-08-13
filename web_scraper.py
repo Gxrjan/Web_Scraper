@@ -4,7 +4,7 @@ import requests, bs4, sys, webbrowser, csv, time
 from helpers import *
 from classes import *
 
-NEWS = list()
+UPDATES = list()
 if db_exists():
 	DATA = get_data_from_db()
 
@@ -112,7 +112,7 @@ def display_products(href):
 def scan_for_changes():
 	links = get_all_brands_links()
 	for link in links:
-			get_page_data(link)
+			scan_for_changes_page(link)
 
 
 def scan_for_changes_page(href):
@@ -130,25 +130,30 @@ def scan_for_changes_page(href):
 
 
 def scan_for_changes_product(html):
+	update = ''
 	soup = bs4.BeautifulSoup(html, "html.parser")
 	product_name = soup.find("h2").text
 	product_id = soup.find('div', class_='product').attrs['data-product-id']
 	price_box = soup.find('div', class_="price price-box")
 	if not price_box:
-		product_from_page = Product(product_id, product_name, False, 0, 0)
+		product_from_page = Product(int(product_id), product_name, False, 0, 0)
 	else:
 		price = price_box.text.strip()
 		if price_box['data-sale']=='sale:true':
 			prices = price.split("\n")
 			current_price = str_to_int(prices[0])
 			regular_price = str_to_int(prices[1])
-			product_from_page = Product(product_id, product_name, True, current_price, regular_price)
+			product_from_page = Product(int(product_id), product_name, True, int(current_price), int(regular_price))
 		else:
 			price = str_to_int(price)
-			product_from_page = Product(product_id, product_name, False, price, price)
+			product_from_page = Product(int(product_id), product_name, False, int(price), int(price))
+	print(product_from_page.product_name)
 	if product_from_page not in DATA:
 		DATA.append(product_from_page)
-		product_news = 'Продукт %s был добавлен в базу данных. Цена: %s' % (product, product.current_price)
+		product_news = 'Продукт %s был добавлен в базу данных. Цена: %s' % (product_from_page.product_name, 
+																			product_from_page.current_price)
+		print(product_news)
+		update = update + product_news
 	else:
 		product_from_db = DATA[DATA.index(product_from_page)]
 		if not product_from_page.is_on_sale and not product_from_db.is_on_sale:
@@ -156,30 +161,49 @@ def scan_for_changes_product(html):
 		elif product_from_page.is_on_sale and product_from_db.is_on_sale:
 			print('Сейл не закончился')
 		elif product_from_page.is_on_sale and not product_from_db.is_on_sale:
+			product_from_db.is_on_sale = product_from_page.is_on_sale
 			print('Сейл начался!')
+			product_news = 'Сейл начался! '
+			update = update + product_news
 		else:
+			product_from_db.is_on_sale = product_from_page.is_on_sale
 			print('Сейл закончился!')
+			product_news = 'Сейл закончился! '
+			update = update + product_news
+
+		if product_from_db.current_price < product_from_page.current_price:
+			print('Цена увеличилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price))
+			product_news = 'Цена увеличилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price)
+			update = update + product_news
+			product_from_db.current_price = product_from_page.current_price
+			product_from_db.regular_price = product_from_page.regular_price
+		elif product_from_db.current_price > product_from_page.current_price:
+			print('Цена уменьшилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price))
+			product_news = 'Цена уменьшилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price)
+			update = update + product_news
+			product_from_db.current_price = product_from_page.current_price
+			product_from_db.regular_price = product_from_page.regular_price
+		else:
+			product_from_db.regular_price = product_from_page.regular_price
+			print('Цена не менялась')
+	if update:
+		UPDATES.append(product_from_db.product_name + ':' + update)	
+
+	print('----------------------------------------------------')
+
 		
 
 def main():
 	links = get_all_brands_links()
 	if db_exists():
-		for link in links:
-			display_products(link)
-		dump_data_to_db(DATA)
+		scan_for_changes()
+		dump_data_to_db_new(DATA)
 	else:
 		print('База данных не обнаружена')
-		print('Создаю базу данных.', end='')
-		time.sleep(0.5)
-		print('.', end='')
+		print('Создаю базу данных...')
 		create_db()
-		time.sleep(0.5)
-		print('.', end='')
-		time.sleep(0.5)
-		print('.')
-		time.sleep(0.5)
 		print('база данных создана')
-	display_news(NEWS)
+	display_updates(UPDATES)
 
 
 if __name__ == "__main__":

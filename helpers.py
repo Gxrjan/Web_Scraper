@@ -108,16 +108,16 @@ def display_name_price(href):
 	print("----------------------------------------------")
 
 
-def display_news(news):
+def display_updates(updates):
 	file = open('updates.csv', 'a', encoding='utf8', newline='')
 	writer = csv.writer(file)
-	if len(news)==0:
+	if len(updates)==0:
 		print("Новостей нет")
 	else:
 		print("\nНовости:")
-		for s in range(len(news)):
-			print('%s: %s' % (s+1, news[s]))
-			writer.writerow([str(datetime.now()), news[s]])
+		for s in range(len(updates)):
+			print('%s: %s' % (s+1, updates[s]))
+			writer.writerow([str(datetime.now()), updates[s]])
 
 
 def create_db():
@@ -188,3 +188,10 @@ def dump_data_to_db(data):
 				w.writerow([k, v[0], v[1], v[2]])
 			else:
 				w.writerow([k, v[0], v[1]])
+
+
+def dump_data_to_db_new(data):
+	with open('brandshop.csv', 'w', newline='', encoding='utf8') as outfile:
+		writer = csv.writer(outfile)
+		for p in data:
+			writer.writerow([p.product_id, p.product_name, p.is_on_sale, p.current_price, p.regular_price])
