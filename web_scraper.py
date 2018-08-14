@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import requests, bs4, sys, webbrowser, csv, time
+import requests
+import bs4
+import sys
+import webbrowser
+import csv
+import time
 from helpers import *
 from classes import *
 
@@ -8,6 +13,8 @@ UPDATES = list()
 if db_exists():
 	DATA = get_data_from_db()
 
+
+# Deprecated
 def display_name_price_container_two(html):
 	# отражает название и цену продуктов контейнера
 	soup = bs4.BeautifulSoup(html, "html.parser")
@@ -18,7 +25,7 @@ def display_name_price_container_two(html):
 		return
 	price = price_box.text.strip()
 	print(product_name)
-	if price_box['data-sale']=='sale:true':
+	if price_box['data-sale'] == 'sale:true':
 		sale = 'True'
 		prices = price.split("\n")
 		price_after = str_to_int(prices[0])
@@ -26,29 +33,47 @@ def display_name_price_container_two(html):
 		if product_name not in DATA.keys():
 			DATA[product_name] = (sale, price_before, price_after)
 			print(product_name + ' добавлен(а) в список')
-			NEWS.append('%s был добавлен в список. Цена %s' % (product_name, price_after))
+			NEWS.append(
+				'%s был добавлен в список. Цена %s' %
+				(product_name, price_after))
 		else:
-			if DATA[product_name][0]=='False':
+			if DATA[product_name][0] == 'False':
 				print('Сейл начался!')
 				if DATA[product_name][1] < price_after:
-					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][1], price_after))
-					NEWS.append('Сейл начался! Цена на %s повысилиась с %sр до %sр' % (product_name, DATA[product_name][1], price_after))
+					print(
+						'Цена повысилиась с %sр до %sр' %
+						(DATA[product_name][1], price_after))
+					NEWS.append(
+						'Сейл начался! Цена на %s повысилиась с %sр до %sр' %
+						(product_name, DATA[product_name][1], price_after))
 					DATA[product_name] = (sale, price_before, price_after)
 				elif DATA[product_name][1] > price_after:
-					print('Цена понизилась с %sр до %sр' % (DATA[product_name][1], price_after))
-					NEWS.append('Сейл начался! Цена на %s понизилась с %sр до %sр' % (product_name, DATA[product_name][1], price_after))
+					print(
+						'Цена понизилась с %sр до %sр' %
+						(DATA[product_name][1], price_after))
+					NEWS.append(
+						'Сейл начался! Цена на %s понизилась с %sр до %sр' %
+						(product_name, DATA[product_name][1], price_after))
 					DATA[product_name] = (sale, price_before, price_after)
 				else:
 					print('Цена осталась прежняя')
 			else:
 				print('Сейл все еще идет!')
 				if DATA[product_name][2] < price_after:
-					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][2], price_after))
-					NEWS.append('Цена на %s повысилиась с %sр до %sр' % (product_name, DATA[product_name][2], price_after))
+					print(
+						'Цена повысилиась с %sр до %sр' %
+						(DATA[product_name][2], price_after))
+					NEWS.append(
+						'Цена на %s повысилиась с %sр до %sр' %
+						(product_name, DATA[product_name][2], price_after))
 					DATA[product_name] = (sale, price_before, price_after)
 				elif DATA[product_name][2] > price_after:
-					print('Цена понизилась с %sр до %sр' % (DATA[product_name][2], price_after))
-					NEWS.append('Цена на %s понизилась с %sр до %sр' % (product_name, DATA[product_name][2], price_after))
+					print(
+						'Цена понизилась с %sр до %sр' %
+						(DATA[product_name][2], price_after))
+					NEWS.append(
+						'Цена на %s понизилась с %sр до %sр' %
+						(product_name, DATA[product_name][2], price_after))
 					DATA[product_name] = (sale, price_before, price_after)
 				else:
 					print('Цена осталась прежняя')
@@ -60,15 +85,19 @@ def display_name_price_container_two(html):
 			print(product_name + ' добавлен(а) в список')
 			NEWS.append('%s был добавлен в список. Цена %s' % (product_name, price))
 		else:
-			if DATA[product_name][0]=='False':
+			if DATA[product_name][0] == 'False':
 				print('Сейл не начался!')
 				if DATA[product_name][1] < price:
 					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][1], price))
-					NEWS.append('Цена на %s повысилиась с %sр до %sр' % (product_name, DATA[product_name][1], price))
+					NEWS.append(
+						'Цена на %s повысилиась с %sр до %sр' %
+						(product_name, DATA[product_name][1], price))
 					DATA[product_name] = (sale, price)
 				elif DATA[product_name][1] > price:
 					print('Цена понизилась с %sр до %sр' % (DATA[product_name][1], price))
-					NEWS.append('Цена на %s понизилась с %sр до %sр' % (product_name, DATA[product_name][1], price))
+					NEWS.append(
+						'Цена на %s понизилась с %sр до %sр' %
+						(product_name, DATA[product_name][1], price))
 					DATA[product_name] = (sale, price)
 				else:
 					print('Цена осталась прежняя')
@@ -76,18 +105,22 @@ def display_name_price_container_two(html):
 				print('Сейл закончился!')
 				if DATA[product_name][2] < price:
 					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][2], price))
-					NEWS.append('Сейл закончился! Цена на %s повысилиась с %sр до %sр' % (product_name, DATA[product_name][2], price))
+					NEWS.append(
+						'Сейл закончился! Цена на %s повысилиась с %sр до %sр' %
+						(product_name, DATA[product_name][2], price))
 					DATA[product_name] = (sale, price)
 				elif DATA[product_name][2] > price:
 					print('Цена понизилась с %sр до %sр' % (DATA[product_name][2], price))
-					NEWS.append('Сейл закончился! Цена на %s понизилась с %sр до %sр' % (product_name, DATA[product_name][2], price))
+					NEWS.append(
+						'Сейл закончился! Цена на %s понизилась с %sр до %sр' %
+						(product_name, DATA[product_name][2], price))
 					DATA[product_name] = (sale, price)
 				else:
 					print('Цена осталась прежняя')
 	print("----------------------------------------------")
 
 
-
+# Deprecated
 def display_products(href):
 	res = requests.get(href)
 	res.raise_for_status()
@@ -103,7 +136,7 @@ def display_products(href):
 
 
 			""")
-		href=soup.find("a", text="Далее").attrs['href']
+		href = soup.find("a", text="Далее").attrs['href']
 		display_products(href)
 	else:
 		print("Конец бренда")
@@ -123,7 +156,7 @@ def scan_for_changes_page(href):
 	for l in range(len(product_containers)):
 		scan_for_changes_product(str(product_containers[l]))
 	if has_further_page(soup):
-		href=soup.find("a", text="Далее").attrs['href']
+		href = soup.find("a", text="Далее").attrs['href']
 		scan_for_changes_page(href)
 	else:
 		return
@@ -139,19 +172,23 @@ def scan_for_changes_product(html):
 		product_from_page = Product(int(product_id), product_name, False, 0, 0)
 	else:
 		price = price_box.text.strip()
-		if price_box['data-sale']=='sale:true':
+		if price_box['data-sale'] == 'sale:true':
 			prices = price.split("\n")
 			current_price = str_to_int(prices[0])
 			regular_price = str_to_int(prices[1])
-			product_from_page = Product(int(product_id), product_name, True, int(current_price), int(regular_price))
+			product_from_page = Product(
+				int(product_id), product_name, True,
+				int(current_price), int(regular_price))
 		else:
 			price = str_to_int(price)
-			product_from_page = Product(int(product_id), product_name, False, int(price), int(price))
+			product_from_page = Product(
+				int(product_id), product_name, False,
+				int(price), int(price))
 	print(product_from_page.product_name)
 	if product_from_page not in DATA:
 		DATA.append(product_from_page)
-		product_news = 'Продукт %s был добавлен в базу данных. Цена: %s' % (product_from_page.product_name, 
-																			product_from_page.current_price)
+		product_news = 'Продукт был добавлен в базу данных. Цена: %s' % \
+			(product_from_page.current_price)
 		print(product_news)
 		update = update + product_news
 	else:
@@ -172,14 +209,20 @@ def scan_for_changes_product(html):
 			update = update + product_news
 
 		if product_from_db.current_price < product_from_page.current_price:
-			print('Цена увеличилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price))
-			product_news = 'Цена увеличилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price)
+			print(
+				'Цена увеличилась с %s до %s' %
+				(product_from_db.current_price, product_from_page.current_price))
+			product_news = 'Цена увеличилась с %s до %s' % \
+				(product_from_db.current_price, product_from_page.current_price)
 			update = update + product_news
 			product_from_db.current_price = product_from_page.current_price
 			product_from_db.regular_price = product_from_page.regular_price
 		elif product_from_db.current_price > product_from_page.current_price:
-			print('Цена уменьшилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price))
-			product_news = 'Цена уменьшилась с %s до %s' % (product_from_db.current_price, product_from_page.current_price)
+			print(
+				'Цена уменьшилась с %s до %s' %
+				(product_from_db.current_price, product_from_page.current_price))
+			product_news = 'Цена уменьшилась с %s до %s' % \
+				(product_from_db.current_price, product_from_page.current_price)
 			update = update + product_news
 			product_from_db.current_price = product_from_page.current_price
 			product_from_db.regular_price = product_from_page.regular_price
@@ -187,13 +230,12 @@ def scan_for_changes_product(html):
 			product_from_db.regular_price = product_from_page.regular_price
 			print('Цена не менялась')
 	if update:
-		UPDATES.append(product_from_db.product_name + ':' + update)	
+		UPDATES.append(product_from_page.product_name + ':' + update)
 
 	print('----------------------------------------------------')
 
-		
 
-def main():
+def initiate_scan():
 	links = get_all_brands_links()
 	if db_exists():
 		scan_for_changes()
@@ -204,6 +246,23 @@ def main():
 		create_db()
 		print('база данных создана')
 	display_updates(UPDATES)
+
+
+def main():
+	while True:
+		user_input = input(
+			'''
+			1: Начать сканирование
+			2: Показать все Бренды
+			3: Выйти из программы
+			''')
+		if user_input == '1':
+			initiate_scan()
+		elif user_input == '2':
+			clear_console()
+			display_brands()
+		else:
+			quit()
 
 
 if __name__ == "__main__":

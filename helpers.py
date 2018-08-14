@@ -1,9 +1,16 @@
-import requests, bs4, sys, webbrowser, csv, time, os
+import requests
+import bs4
+import sys
+import webbrowser
+import csv
+import time
+import os
 from datetime import datetime
 from classes import *
 
 
 CREATION_DATA = list()
+
 
 class UniqueDict(dict):
 	# dict без повторений в keys
@@ -19,24 +26,23 @@ def from_url_to_name(url):
 	user_input = sys.argv[1]
 	user_input = user_input[8:]
 	bits = user_input.split(".")
-	file_name = bits[1] + ".html" if bits[0]=="www" else bits[0] + ".html"
-	file_name = bits[1] + ".html" if bits[0]=="www" else bits[0] + ".html"
+	file_name = bits[1] + ".html" if bits[0] == "www" else bits[0] + ".html"
+	file_name = bits[1] + ".html" if bits[0] == "www" else bits[0] + ".html"
 
 
 def list_to_dict(data):
 	# конвертирует из листа в дикт
-	products=dict()
+	products = dict()
 	for i in range(len(data)):
-		if len(data[i])>3:
+		if len(data[i]) > 3:
 			products[data[i][0]] = (data[i][1], data[i][2], data[i][3])
 		else:
-			products[data[i][0]]=(data[i][1], data[i][2])
+			products[data[i][0]] = (data[i][1], data[i][2])
 	return products
 
 
 def str_to_bool(str):
 	return str == 'True'
-
 
 
 def get_data_from_db():
@@ -52,7 +58,7 @@ def get_data_from_db():
 
 
 def is_on_sale(prd):
-	if len(prd)>2:
+	if len(prd) > 2:
 		return True
 	else:
 		return False
@@ -72,13 +78,13 @@ def get_product_page(href, name):
 	# скачивает стринцу товара
 	res = requests.get(href)
 	res.raise_for_status()
-	file = open("products/"+name+".html", "wb")
+	file = open("products/" + name + ".html", "wb")
 	for chunk in res.iter_content(100000):
 		file.write(chunk)
 
 
 def has_further_page(soup):
-	elem=soup.find('a', text="Далее")
+	elem = soup.find('a', text="Далее")
 	if elem is not None:
 		return True
 	else:
@@ -111,12 +117,12 @@ def display_name_price(href):
 def display_updates(updates):
 	file = open('updates.csv', 'a', encoding='utf8', newline='')
 	writer = csv.writer(file)
-	if len(updates)==0:
+	if len(updates) == 0:
 		print("Новостей нет")
 	else:
 		print("\nНовости:")
 		for s in range(len(updates)):
-			print('%s: %s' % (s+1, updates[s]))
+			print('%s: %s' % (s + 1, updates[s]))
 			writer.writerow([str(datetime.now()), updates[s]])
 
 
@@ -127,8 +133,9 @@ def create_db():
 	file = open('brandshop.csv', 'w', newline='', encoding='utf8')
 	writer = csv.writer(file)
 	for p in CREATION_DATA:
-		writer.writerow([p.product_id, p.product_name, p.is_on_sale, p.current_price, p.regular_price])
-
+		writer.writerow([
+			p.product_id, p.product_name, p.is_on_sale,
+			p.current_price, p.regular_price])
 
 
 def get_page_data(href):
@@ -139,7 +146,7 @@ def get_page_data(href):
 	for l in range(len(product_containers)):
 		get_product_data(str(product_containers[l]))
 	if has_further_page(soup):
-		href=soup.find("a", text="Далее").attrs['href']
+		href = soup.find("a", text="Далее").attrs['href']
 		get_page_data(href)
 	else:
 		return
@@ -154,11 +161,13 @@ def get_product_data(html):
 		product = Product(product_id, product_name, False, 0, 0)
 	else:
 		price = price_box.text.strip()
-		if price_box['data-sale']=='sale:true':
+		if price_box['data-sale'] == 'sale:true':
 			prices = price.split("\n")
 			current_price = str_to_int(prices[0])
 			regular_price = str_to_int(prices[1])
-			product = Product(product_id, product_name, True, current_price, regular_price)
+			product = Product(
+				product_id, product_name, True,
+				current_price, regular_price)
 		else:
 			price = str_to_int(price)
 			product = Product(product_id, product_name, False, price, price)
@@ -166,13 +175,15 @@ def get_product_data(html):
 		CREATION_DATA.append(product)
 
 
-
-
 def get_all_brands_links():
 	res = requests.get('https://brandshop.ru/brandlist/')
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, 'html.parser')
 	brands = soup.find_all('li', class_='active')
+	brand_names = list()
+	for b in brands:
+		brand_names.append(b.text)
+	save_brand_list(brand_names)
 	links = list()
 	for b in brands:
 		link = b.find('a')
@@ -180,10 +191,11 @@ def get_all_brands_links():
 	return links
 
 
+# Deprecated
 def dump_data_to_db(data):
 	with open('brandshop.csv', 'w', newline='', encoding='utf8') as outfile:
 		w = csv.writer(outfile)
-		for k,v in data.items():
+		for k, v in data.items():
 			if is_on_sale(v):
 				w.writerow([k, v[0], v[1], v[2]])
 			else:
@@ -194,4 +206,28 @@ def dump_data_to_db_new(data):
 	with open('brandshop.csv', 'w', newline='', encoding='utf8') as outfile:
 		writer = csv.writer(outfile)
 		for p in data:
-			writer.writerow([p.product_id, p.product_name, p.is_on_sale, p.current_price, p.regular_price])
+			writer.writerow([
+				p.product_id, p.product_name,
+				p.is_on_sale, p.current_price, p.regular_price])
+
+
+def save_brand_list(brands):
+	with open('brands.csv', 'w', newline='', encoding='utf8') as outfile:
+		writer = csv.writer(outfile)
+		for b in brands:
+			writer.writerow([b.strip()])
+
+
+def clear_console():
+	os.system('cls' if os.name == 'nt' else 'clear')
+
+
+def display_brands():
+	display_message = ''
+	with open('brands.csv', newline='') as file:
+		reader = csv.reader(file)
+		brands = list(reader)
+		counter = 1
+		for b in brands:
+			print(str(counter) + ': ' + b[0])
+			counter += 1
