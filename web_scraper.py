@@ -14,162 +14,44 @@ if db_exists():
 	DATA = get_data_from_db()
 
 
-# Deprecated
-def display_name_price_container_two(html):
-	# отражает название и цену продуктов контейнера
-	soup = bs4.BeautifulSoup(html, "html.parser")
-	product_name = soup.find("h2").text
-	price_box = soup.find('div', class_="price price-box")
-	if not price_box:
-		DATA[product_name] = (False, 0)
-		return
-	price = price_box.text.strip()
-	print(product_name)
-	if price_box['data-sale'] == 'sale:true':
-		sale = 'True'
-		prices = price.split("\n")
-		price_after = str_to_int(prices[0])
-		price_before = str_to_int(prices[1])
-		if product_name not in DATA.keys():
-			DATA[product_name] = (sale, price_before, price_after)
-			print(product_name + ' добавлен(а) в список')
-			NEWS.append(
-				'%s был добавлен в список. Цена %s' %
-				(product_name, price_after))
-		else:
-			if DATA[product_name][0] == 'False':
-				print('Сейл начался!')
-				if DATA[product_name][1] < price_after:
-					print(
-						'Цена повысилиась с %sр до %sр' %
-						(DATA[product_name][1], price_after))
-					NEWS.append(
-						'Сейл начался! Цена на %s повысилиась с %sр до %sр' %
-						(product_name, DATA[product_name][1], price_after))
-					DATA[product_name] = (sale, price_before, price_after)
-				elif DATA[product_name][1] > price_after:
-					print(
-						'Цена понизилась с %sр до %sр' %
-						(DATA[product_name][1], price_after))
-					NEWS.append(
-						'Сейл начался! Цена на %s понизилась с %sр до %sр' %
-						(product_name, DATA[product_name][1], price_after))
-					DATA[product_name] = (sale, price_before, price_after)
-				else:
-					print('Цена осталась прежняя')
-			else:
-				print('Сейл все еще идет!')
-				if DATA[product_name][2] < price_after:
-					print(
-						'Цена повысилиась с %sр до %sр' %
-						(DATA[product_name][2], price_after))
-					NEWS.append(
-						'Цена на %s повысилиась с %sр до %sр' %
-						(product_name, DATA[product_name][2], price_after))
-					DATA[product_name] = (sale, price_before, price_after)
-				elif DATA[product_name][2] > price_after:
-					print(
-						'Цена понизилась с %sр до %sр' %
-						(DATA[product_name][2], price_after))
-					NEWS.append(
-						'Цена на %s понизилась с %sр до %sр' %
-						(product_name, DATA[product_name][2], price_after))
-					DATA[product_name] = (sale, price_before, price_after)
-				else:
-					print('Цена осталась прежняя')
-	else:
-		sale = 'False'
-		price = str_to_int(price)
-		if product_name not in DATA.keys():
-			DATA[product_name] = (sale, price)
-			print(product_name + ' добавлен(а) в список')
-			NEWS.append('%s был добавлен в список. Цена %s' % (product_name, price))
-		else:
-			if DATA[product_name][0] == 'False':
-				print('Сейл не начался!')
-				if DATA[product_name][1] < price:
-					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][1], price))
-					NEWS.append(
-						'Цена на %s повысилиась с %sр до %sр' %
-						(product_name, DATA[product_name][1], price))
-					DATA[product_name] = (sale, price)
-				elif DATA[product_name][1] > price:
-					print('Цена понизилась с %sр до %sр' % (DATA[product_name][1], price))
-					NEWS.append(
-						'Цена на %s понизилась с %sр до %sр' %
-						(product_name, DATA[product_name][1], price))
-					DATA[product_name] = (sale, price)
-				else:
-					print('Цена осталась прежняя')
-			else:
-				print('Сейл закончился!')
-				if DATA[product_name][2] < price:
-					print('Цена повысилиась с %sр до %sр' % (DATA[product_name][2], price))
-					NEWS.append(
-						'Сейл закончился! Цена на %s повысилиась с %sр до %sр' %
-						(product_name, DATA[product_name][2], price))
-					DATA[product_name] = (sale, price)
-				elif DATA[product_name][2] > price:
-					print('Цена понизилась с %sр до %sр' % (DATA[product_name][2], price))
-					NEWS.append(
-						'Сейл закончился! Цена на %s понизилась с %sр до %sр' %
-						(product_name, DATA[product_name][2], price))
-					DATA[product_name] = (sale, price)
-				else:
-					print('Цена осталась прежняя')
-	print("----------------------------------------------")
-
-
-# Deprecated
-def display_products(href):
-	res = requests.get(href)
-	res.raise_for_status()
-	soup = bs4.BeautifulSoup(res.text, "html.parser")
-	product_containers = soup.select('.product-container')
-	for l in range(len(product_containers)):
-		display_name_price_container_two(str(product_containers[l]))
-	if has_further_page(soup):
-		print("""
-
-
-			Следующая страница:
-
-
-			""")
-		href = soup.find("a", text="Далее").attrs['href']
-		display_products(href)
-	else:
-		print("Конец бренда")
-
-
 def scan_for_changes():
 	links = get_all_brands_links()
 	for link in links:
-			scan_for_changes_page(link)
+			scan_for_changes_page(link[0], link[1])
 
 
-def scan_for_changes_page(href):
-	res = requests.get(href)
+def scan_for_changes_page(href, brand):
+	res = requests.get(href, verify=False)
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, "html.parser")
 	product_containers = soup.select('.product-container')
 	for l in range(len(product_containers)):
-		scan_for_changes_product(str(product_containers[l]))
+		scan_for_changes_product(str(product_containers[l]), brand)
 	if has_further_page(soup):
 		href = soup.find("a", text="Далее").attrs['href']
-		scan_for_changes_page(href)
+		scan_for_changes_page(href, brand)
 	else:
 		return
 
 
-def scan_for_changes_product(html):
+def scan_for_changes_product(html, brand):
 	update = ''
 	soup = bs4.BeautifulSoup(html, "html.parser")
 	product_name = soup.find("h2").text
 	product_id = soup.find('div', class_='product').attrs['data-product-id']
 	price_box = soup.find('div', class_="price price-box")
+	href = soup.find('a').attrs['href']
+	img_src = soup.find('img').attrs['src']
+	if soup.find('div', class_='product outofstock'): # Надо проработать обработку продукта если он outofstock
+		product_outofstock = Product(int(product_id), product_name, False, 0, 0, 'outofstock', href, img_src)
+		if product_outofstock in DATA:
+			DATA.remove(DATA[DATA.index(product_outofstock)])
+			update += 'Продукт был удален из базы данных так как outofstock!!'
+			UPDATES.append(product_outofstock.product_name + ':' + update)
+		return
+
 	if not price_box:
-		product_from_page = Product(int(product_id), product_name, False, 0, 0)
+		product_from_page = Product(int(product_id), product_name, False, 0, 0, brand, href, img_src)
 	else:
 		price = price_box.text.strip()
 		if price_box['data-sale'] == 'sale:true':
@@ -178,12 +60,12 @@ def scan_for_changes_product(html):
 			regular_price = str_to_int(prices[1])
 			product_from_page = Product(
 				int(product_id), product_name, True,
-				int(current_price), int(regular_price))
+				int(current_price), int(regular_price), brand, href, img_src)
 		else:
 			price = str_to_int(price)
 			product_from_page = Product(
 				int(product_id), product_name, False,
-				int(price), int(price))
+				int(price), int(price), brand, href, img_src)
 	print(product_from_page.product_name)
 	if product_from_page not in DATA:
 		DATA.append(product_from_page)
@@ -240,12 +122,13 @@ def initiate_scan():
 	if db_exists():
 		scan_for_changes()
 		dump_data_to_db_new(DATA)
+		display_updates(UPDATES)
+		save_updates(UPDATES)
 	else:
 		print('База данных не обнаружена')
 		print('Создаю базу данных...')
 		create_db()
 		print('база данных создана')
-	display_updates(UPDATES)
 
 
 def main():
@@ -261,6 +144,18 @@ def main():
 		elif user_input == '2':
 			clear_console()
 			display_brands()
+			user_input = input('''
+			Введите название бренда
+			''')
+			selected = list()
+			for product in DATA:
+				if product.brand == user_input:
+					selected.append(product)
+					print(str(product.product_id) + ': ' + product.product_name)
+			user_input = input('''Введите номер продукта''')
+			for product in selected:
+				if product.product_id == int(user_input):
+					webbrowser.open_new_tab(product.img_src)
 		else:
 			quit()
 

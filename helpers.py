@@ -12,6 +12,7 @@ from classes import *
 CREATION_DATA = list()
 
 
+# Deprecated
 class UniqueDict(dict):
 	# dict без повторений в keys
 	def __setitem__(self, key, item):
@@ -21,6 +22,7 @@ class UniqueDict(dict):
 			raise KeyError("Key already exists " + key)
 
 
+# Deprecated
 def from_url_to_name(url):
 	# берет название из url
 	user_input = sys.argv[1]
@@ -52,11 +54,12 @@ def get_data_from_db():
 		db = list(reader)
 		product_list = list()
 		for d in db:
-			product = Product(int(d[0]), d[1], str_to_bool(d[2]), int(d[3]), int(d[4]))
+			product = Product(int(d[0]), d[1], str_to_bool(d[2]), int(d[3]), int(d[4]), d[5], d[6], d[7])
 			product_list.append(product)
 		return product_list
 
 
+# Deprecated
 def is_on_sale(prd):
 	if len(prd) > 2:
 		return True
@@ -74,9 +77,10 @@ def db_exists():
 	return os.path.isfile('brandshop.csv')
 
 
+# Deprecated
 def get_product_page(href, name):
 	# скачивает стринцу товара
-	res = requests.get(href)
+	res = requests.get(href, verify=False)
 	res.raise_for_status()
 	file = open("products/" + name + ".html", "wb")
 	for chunk in res.iter_content(100000):
@@ -91,11 +95,12 @@ def has_further_page(soup):
 		return False
 
 
+# Deprecated
 def display_name_price(href):
 	# отражает название и цену переходя по ссылке на страницу продукта
 	file = open('brandshop.csv', "w", newline="")
 	writer = csv.writer(file)
-	res = requests.get(href)
+	res = requests.get(href, verify=False)
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, "html.parser")
 	product_name = soup.find("span", itemprop="name").text
@@ -114,51 +119,55 @@ def display_name_price(href):
 	print("----------------------------------------------")
 
 
+def save_updates(updates):
+	with open('updates.csv', 'a', encoding='utf8', newline='') as w:
+		writer = csv.writer(w)
+		for s in range(len(updates)):
+			writer.writerow([str(datetime.now()), updates[s]])
+
+
 def display_updates(updates):
-	file = open('updates.csv', 'a', encoding='utf8', newline='')
-	writer = csv.writer(file)
 	if len(updates) == 0:
 		print("Новостей нет")
 	else:
 		print("\nНовости:")
 		for s in range(len(updates)):
 			print('%s: %s' % (s + 1, updates[s]))
-			writer.writerow([str(datetime.now()), updates[s]])
 
 
 def create_db():
 	links = get_all_brands_links()
 	for link in links:
-			get_page_data(link)
-	file = open('brandshop.csv', 'w', newline='', encoding='utf8')
-	writer = csv.writer(file)
-	for p in CREATION_DATA:
-		writer.writerow([
-			p.product_id, p.product_name, p.is_on_sale,
-			p.current_price, p.regular_price])
+			get_page_data(link[0], link[1])
+	dump_data_to_db_new(CREATION_DATA)
 
 
-def get_page_data(href):
-	res = requests.get(href)
+def get_page_data(href, brand):
+	res = requests.get(href, verify=False)
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, "html.parser")
 	product_containers = soup.select('.product-container')
 	for l in range(len(product_containers)):
-		get_product_data(str(product_containers[l]))
+		get_product_data(str(product_containers[l]), brand)
 	if has_further_page(soup):
 		href = soup.find("a", text="Далее").attrs['href']
-		get_page_data(href)
+		get_page_data(href, brand)
 	else:
 		return
 
 
-def get_product_data(html):
+def get_product_data(html, brand):
 	soup = bs4.BeautifulSoup(html, "html.parser")
 	product_name = soup.find("h2").text
 	product_id = soup.find('div', class_='product').attrs['data-product-id']
 	price_box = soup.find('div', class_="price price-box")
+	href = soup.find('a').attrs['href']
+	img_src = soup.find('img').attrs['src']
+	if soup.find('div', class_='product outofstock'): # Надо проработать обработку продукта если он outofstock
+		return
+
 	if not price_box:
-		product = Product(product_id, product_name, False, 0, 0)
+		product = Product(product_id, product_name, False, 0, 0, brand, href, img_src)
 	else:
 		price = price_box.text.strip()
 		if price_box['data-sale'] == 'sale:true':
@@ -167,16 +176,16 @@ def get_product_data(html):
 			regular_price = str_to_int(prices[1])
 			product = Product(
 				product_id, product_name, True,
-				current_price, regular_price)
+				current_price, regular_price, brand, href, img_src)
 		else:
 			price = str_to_int(price)
-			product = Product(product_id, product_name, False, price, price)
+			product = Product(product_id, product_name, False, price, price, brand, href, img_src)
 	if product not in CREATION_DATA:
 		CREATION_DATA.append(product)
 
 
 def get_all_brands_links():
-	res = requests.get('https://brandshop.ru/brandlist/')
+	res = requests.get('https://brandshop.ru/brandlist/', verify=False)
 	res.raise_for_status()
 	soup = bs4.BeautifulSoup(res.text, 'html.parser')
 	brands = soup.find_all('li', class_='active')
@@ -187,7 +196,7 @@ def get_all_brands_links():
 	links = list()
 	for b in brands:
 		link = b.find('a')
-		links.append(link.attrs['href'])
+		links.append([link.attrs['href'], b.text.strip()])
 	return links
 
 
@@ -203,12 +212,13 @@ def dump_data_to_db(data):
 
 
 def dump_data_to_db_new(data):
+	data.sort(key=lambda product: product.product_name.lower())
 	with open('brandshop.csv', 'w', newline='', encoding='utf8') as outfile:
 		writer = csv.writer(outfile)
 		for p in data:
 			writer.writerow([
 				p.product_id, p.product_name,
-				p.is_on_sale, p.current_price, p.regular_price])
+				p.is_on_sale, p.current_price, p.regular_price, p.brand, p.href, p.img_src])
 
 
 def save_brand_list(brands):
